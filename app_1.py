@@ -19,7 +19,7 @@ def make_key_text(n):
     lines = []
     for i in range(1, n+1):
         ans = DEFAULT_50[i-1] if i <= 50 else 'A'
-        lines.append(f"{i},{ans}")
+        lines.append(f"{i}. {ans}")
     return "\n".join(lines)
 
 
@@ -334,13 +334,17 @@ if st.session_state.step == 'setup':
         total = st.session_state.total_soal
         if 'key_text' not in st.session_state:
             st.session_state.key_text = make_key_text(total)
-        key_text = st.text_area("Format: `1,A` `2,B` dll.", value=st.session_state.key_text, height=300, label_visibility="collapsed")
+        key_text = st.text_area("Format: `1. A` `2. B` dll.", value=st.session_state.key_text, height=300, label_visibility="collapsed")
         st.session_state.key_text = key_text
         answer_key = {}; errors = []
         for line in key_text.strip().split('\n'):
             line = line.strip()
             if not line: continue
-            parts = line.split(',')
+            # support both "1. A" and "1,A"
+            if '. ' in line:
+                parts = line.split('. ', 1)
+            else:
+                parts = line.split(',', 1)
             if len(parts) != 2: errors.append(f"Format salah: `{line}`"); continue
             try:
                 q = int(parts[0].strip()); ans = parts[1].strip().upper()
