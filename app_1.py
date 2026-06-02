@@ -14,6 +14,15 @@ from skimage.color import rgb2gray
 import warnings
 warnings.filterwarnings("ignore")
 
+DEFAULT_50 = ['B','C','A','D','E','A','B','C','D','A','E','B','C','A','D','B','E','A','C','D','A','B','E','C','D','B','A','D','C','E','A','C','B','D','E','C','A','B','D','E','B','D','A','C','E','A','D','B','E','C']
+def make_key_text(n):
+    lines = []
+    for i in range(1, n+1):
+        ans = DEFAULT_50[i-1] if i <= 50 else 'A'
+        lines.append(f"{i},{ans}")
+    return "\n".join(lines)
+
+
 # ─── PAGE CONFIG ────────────────────────────────────────────
 st.set_page_config(
     page_title="LJK Scanner — CV Project",
@@ -313,14 +322,18 @@ if st.session_state.step == 'setup':
         st.session_state.sesi_nama  = st.text_input("Nama Sesi / Mata Kuliah", value=st.session_state.sesi_nama or "Computer Vision UAS")
         st.session_state.kode_kelas = st.text_input("Kode Kelas", value=st.session_state.kode_kelas or "LK01")
         st.session_state.kode_dosen = st.text_input("Kode Dosen", value=st.session_state.kode_dosen or "DS123")
-        st.session_state.total_soal = st.number_input("Jumlah Soal (1–100)", min_value=1, max_value=100, value=st.session_state.total_soal)
+        new_total = st.number_input("Jumlah Soal (1–100)", min_value=1, max_value=100, value=st.session_state.total_soal)
+        if new_total != st.session_state.total_soal:
+            st.session_state.total_soal = new_total
+            st.session_state.key_text = make_key_text(new_total)
+            st.rerun()
         st.session_state.scoring    = st.selectbox("Metode Penilaian", ["standard","penalty"],
             format_func=lambda x: "Standar (benar/total × 100)" if x=="standard" else "Penalty (-0.25 per salah)")
     with col2:
         st.subheader("Kunci Jawaban")
         total = st.session_state.total_soal
         if 'key_text' not in st.session_state:
-            st.session_state.key_text = "\n".join(f"{i},A" for i in range(1, total+1))
+            st.session_state.key_text = make_key_text(total)
         key_text = st.text_area("Format: `1,A` `2,B` dll.", value=st.session_state.key_text, height=300, label_visibility="collapsed")
         st.session_state.key_text = key_text
         answer_key = {}; errors = []
