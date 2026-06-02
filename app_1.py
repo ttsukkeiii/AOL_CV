@@ -76,11 +76,16 @@ def get_bubble_range(gray_np):
     bw = threshold_otsu_np(gray_np)
     row_proj = bw.sum(axis=1) / 255
     w = gray_np.shape[1]
-    b0 = next((i for i, v in enumerate(row_proj) if v > w * 0.03), 0)
-    b1 = next((i for i in range(len(row_proj)-1, 0, -1) if row_proj[i] > w * 0.03), gray_np.shape[0])
-    return b0, b1
+    h = gray_np.shape[0]
+    # Try progressively looser thresholds
+    for frac in (0.03, 0.015, 0.005):
+        b0 = next((i for i, v in enumerate(row_proj) if v > w * frac), None)
+        b1 = next((i for i in range(len(row_proj)-1, 0, -1) if row_proj[i] > w * frac), None)
+        if b0 is not None and b1 is not None and b1 > b0:
+            return b0, b1
+    return 0, h
 
-def scan_grid(gray_np, num_cols, num_rows, labels, z_thresh=1.2, z_gap=0.5, per_row=False):
+def scan_grid(gray_np, num_cols, num_rows, labels, z_thresh=0.6, z_gap=0.3, per_row=False):
     eq  = apply_clahe_np(gray_np)
     inv = 255 - eq
     h, w = gray_np.shape
@@ -250,13 +255,17 @@ def detect_answers(warped_np, total_soal=100):
     # x positions of each column group (5 groups across width)
     # Each group: answer bubbles for 5 choices (A-E)
     # Layout (x1, y1_top, x2, y2_top, y1_bot, y2_bot, q_top_start, q_bot_start)
+    # Koordinat dikalibrasi ulang:
+    # - x1 digeser lebih ke KIRI agar kolom A tertangkap penuh (bubble A tidak terpotong)
+    # - setiap block lebar ~195px, gap antar block ~5px
+    # - y-range disesuaikan agar 10 baris terdeteksi dengan benar
     BLOCKS = [
         # x1,  y1_top, x2,  y2_top, y1_bot, y2_bot, q_top, q_bot
-        ( 25,  760, 205, 1055,  1060, 1370,   1,  11),
-        (210,  760, 390, 1055,  1060, 1370,  21,  31),
-        (395,  760, 575, 1055,  1060, 1370,  41,  51),
-        (580,  760, 760, 1055,  1060, 1370,  61,  71),
-        (765,  760, 975, 1055,  1060, 1370,  81,  91),
+        (  5,  755, 198, 1058,  1058, 1375,   1,  11),
+        (198,  755, 393, 1058,  1058, 1375,  21,  31),
+        (393,  755, 588, 1058,  1058, 1375,  41,  51),
+        (588,  755, 783, 1058,  1058, 1375,  61,  71),
+        (783,  755, 995, 1058,  1058, 1375,  81,  91),
     ]
     all_answers = {}
     soal_done = 0
@@ -278,6 +287,93 @@ def detect_answers(warped_np, total_soal=100):
                 all_answers[q_bot + i] = ans
             soal_done += n
     return all_answers
+
+def visualize_answer_grid(warped_np, total_soal=100):
+    """
+    Tampilkan overlay grid JAWABAN di atas warped image untuk debugging koordinat.
+    Menggambar kotak hijau di setiap ROI dan label nomor blok.
+    """
+    from PIL import ImageDraw, ImageFont
+    vis = Image.fromarray(warped_np).copy()
+    draw = ImageDraw.Draw(vis)
+
+    BLOCKS = [
+        (  5,  755, 198, 1058,  1058, 1375,   1,  11),
+        (198,  755, 393, 1058,  1058, 1375,  21,  31),
+        (393,  755, 588, 1058,  1058, 1375,  41,  51),
+        (588,  755, 783, 1058,  1058, 1375,  61,  71),
+        (783,  755, 995, 1058,  1058, 1375,  81,  91),
+    ]
+    colors = ['#00FF00','#00FFFF','#FF00FF','#FFFF00','#FF8800']
+    CHOICES = ['A','B','C','D','E']
+
+    for idx, (x1, y1t, x2, y2t, y1b, y2b, q_top, q_bot) in enumerate(BLOCKS):
+        col = colors[idx % len(colors)]
+        # Draw top block outline
+        draw.rectangle([x1, y1t, x2, y2t], outline=col, width=2)
+        draw.text((x1+2, y1t+2), f"Q{q_top}-{q_top+9}", fill=col)
+        # Draw bottom block outline
+        draw.rectangle([x1, y1b, x2, y2b], outline=col, width=2)
+        draw.text((x1+2, y1b+2), f"Q{q_bot}-{q_bot+9}", fill=col)
+
+        # Draw column lines for A-E within each block (top)
+        bw = x2 - x1
+        col_w = bw / 5
+        for ci in range(6):
+            lx = int(x1 + ci * col_w)
+            draw.line([(lx, y1t), (lx, y2t)], fill=col, width=1)
+            draw.line([(lx, y1b), (lx, y2b)], fill=col, width=1)
+            if ci < 5:
+                draw.text((int(x1 + ci*col_w + col_w/2 - 4), y1t + 5), CHOICES[ci], fill=col)
+                draw.text((int(x1 + ci*col_w + col_w/2 - 4), y1b + 5), CHOICES[ci], fill=col)
+
+        # Draw row lines for 10 rows (top block)
+        bh_t = y2t - y1t
+        row_h_t = bh_t / 10
+        for ri in range(11):
+            ry = int(y1t + ri * row_h_t)
+            draw.line([(x1, ry), (x2, ry)], fill=col, width=1)
+        bh_b = y2b - y1b
+        row_h_b = bh_b / 10
+        for ri in range(11):
+            ry = int(y1b + ri * row_h_b)
+            draw.line([(x1, ry), (x2, ry)], fill=col, width=1)
+
+    return vis
+
+
+def detect_answers_debug(warped_np, total_soal=100):
+    """Sama dengan detect_answers tapi mengembalikan density maps untuk debugging."""
+    CHOICES = ['A', 'B', 'C', 'D', 'E']
+    BLOCKS = [
+        (  5,  755, 198, 1058,  1058, 1375,   1,  11),
+        (198,  755, 393, 1058,  1058, 1375,  21,  31),
+        (393,  755, 588, 1058,  1058, 1375,  41,  51),
+        (588,  755, 783, 1058,  1058, 1375,  61,  71),
+        (783,  755, 995, 1058,  1058, 1375,  81,  91),
+    ]
+    all_answers = {}
+    debug_info = []
+    soal_done = 0
+    for x1, y1t, x2, y2t, y1b, y2b, q_top, q_bot in BLOCKS:
+        if soal_done < total_soal:
+            n = min(10, total_soal - soal_done)
+            roi = crop_gray(warped_np, y1t, y2t, x1, x2)
+            r, dmap, b0, b1, row_h, col_w = scan_grid(roi, num_cols=5, num_rows=10, labels=CHOICES, per_row=True)
+            for i, ans in enumerate(r[:n]):
+                all_answers[q_top + i] = ans
+            debug_info.append({'label': f"Q{q_top}-{q_top+n-1}", 'density': dmap, 'answers': r[:n], 'q_start': q_top})
+            soal_done += n
+        if soal_done < total_soal:
+            n = min(10, total_soal - soal_done)
+            roi = crop_gray(warped_np, y1b, y2b, x1, x2)
+            r, dmap, b0, b1, row_h, col_w = scan_grid(roi, num_cols=5, num_rows=10, labels=CHOICES, per_row=True)
+            for i, ans in enumerate(r[:n]):
+                all_answers[q_bot + i] = ans
+            debug_info.append({'label': f"Q{q_bot}-{q_bot+n-1}", 'density': dmap, 'answers': r[:n], 'q_start': q_bot})
+            soal_done += n
+    return all_answers, debug_info
+
 
 def score_answers(student_answers, answer_key):
     correct = wrong = unanswered = 0
@@ -436,11 +532,35 @@ elif st.session_state.step == 'scan':
                         st.image(warped_np, caption="Setelah warp", use_container_width=True)
                     else:
                         st.error("❌ Gagal mendeteksi 4 sudut LJK. Pastikan foto jelas."); continue
+                # ── Debug grid visualization ──
+                show_debug = st.checkbox("🔍 Tampilkan debug grid koordinat", key=f"dbg_{uploaded.name}")
+                if show_debug and ok:
+                    grid_vis = visualize_answer_grid(warped_np, st.session_state.total_soal)
+                    st.image(grid_vis, caption="Debug: Grid ROI JAWABAN (setiap warna = 1 blok, A–E per kolom, 10 baris per sub-blok)", use_container_width=True)
+
                 with st.spinner("Mendeteksi nama, NIM, jawaban..."):
                     nama    = detect_nama(warped_np)
                     nim     = detect_nim(warped_np)
                     tanggal = detect_tanggal(warped_np)
-                    answers = detect_answers(warped_np, st.session_state.total_soal)
+                    if show_debug:
+                        answers, dbg_info = detect_answers_debug(warped_np, st.session_state.total_soal)
+                        with st.expander("🧪 Debug: Density Z-score per Blok", expanded=False):
+                            CHOICES = ['A','B','C','D','E']
+                            for blk in dbg_info:
+                                ans_list = [f"Q{blk['q_start']+i}={a}" for i,a in enumerate(blk['answers'])]
+                                st.markdown(f"**{blk['label']}** → {ans_list}")
+                                fig_h, ax_h = plt.subplots(figsize=(5,2), facecolor='#0f172a')
+                                ax_h.set_facecolor('#1e293b')
+                                n_rows = len(blk['answers'])
+                                im = ax_h.imshow(blk['density'][:n_rows, :5], aspect='auto', cmap='RdYlGn', vmin=-2, vmax=2)
+                                ax_h.set_xticks(range(5)); ax_h.set_xticklabels(CHOICES, color='#e2e8f0', fontsize=8)
+                                ax_h.set_yticks(range(n_rows))
+                                ax_h.set_yticklabels([f"Q{blk['q_start']+i}" for i in range(n_rows)], color='#e2e8f0', fontsize=7)
+                                plt.colorbar(im, ax=ax_h, shrink=0.8)
+                                ax_h.set_title("Z-score (hijau=tinggi=bubble terisi)", color='#f1f5f9', fontsize=8)
+                                st.pyplot(fig_h)
+                    else:
+                        answers = detect_answers(warped_np, st.session_state.total_soal)
                 correct, wrong, unanswered = score_answers(answers, st.session_state.answer_key)
                 score = compute_score(correct, st.session_state.total_soal, st.session_state.scoring)
                 m1,m2,m3,m4,m5 = st.columns(5)
