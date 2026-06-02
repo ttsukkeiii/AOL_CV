@@ -192,41 +192,91 @@ def crop_gray(warped_np, y1, y2, x1, x2):
     return to_gray_np(roi)
 
 def detect_nama(warped_np):
+    """
+    LJK Sunib: NAMA MAHASISWA area
+    Rows = A-Z (26 rows), Cols = 20 character positions
+    Located roughly top-left of the form, below header
+    """
     ALPHABET = list('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-    roi = crop_gray(warped_np, 270, 850, 40, 520)
+    # ROI: (y1, y2, x1, x2) after warp to 1000x1414
+    roi = crop_gray(warped_np, 200, 720, 25, 490)
     results, *_ = scan_grid(roi, num_cols=20, num_rows=26, labels=ALPHABET, per_row=False)
-    return ''.join(r or '_' for r in results).replace('_', ' ').strip()
+    nama = ''.join(r or ' ' for r in results).strip()
+    # Clean up multiple spaces
+    import re
+    nama = re.sub(r' +', ' ', nama)
+    return nama or 'UNKNOWN'
 
 def detect_nim(warped_np):
-    roi = crop_gray(warped_np, 270, 500, 550, 790)
-    results, *_ = scan_grid(roi, num_cols=10, num_rows=10, labels=[str(i) for i in range(10)], per_row=False)
+    """
+    LJK Sunib: NOMOR INDUK MAHASISWA
+    10 columns, rows = 0-9
+    Located top-right area
+    """
+    roi = crop_gray(warped_np, 200, 530, 510, 760)
+    results, *_ = scan_grid(roi, num_cols=10, num_rows=10,
+                             labels=[str(i) for i in range(10)], per_row=False)
     return ''.join(r or '_' for r in results)
 
 def detect_tanggal(warped_np):
-    roi = crop_gray(warped_np, 270, 500, 820, 970)
-    results, *_ = scan_grid(roi, num_cols=6, num_rows=10, labels=[str(i) for i in range(10)], per_row=False)
+    """
+    LJK Sunib: TANGGAL — 6 columns (DD MM YY), rows = 0-9
+    Located top-right corner
+    """
+    roi = crop_gray(warped_np, 200, 530, 780, 970)
+    results, *_ = scan_grid(roi, num_cols=6, num_rows=10,
+                             labels=[str(i) for i in range(10)], per_row=False)
     raw = ''.join(r or '_' for r in results)
-    return f"{raw[0:2]}/{raw[2:4]}/{raw[4:6]}" if len(raw) >= 6 else raw
+    if len(raw) >= 6:
+        return f"{raw[0:2]}/{raw[2:4]}/{raw[4:6]}"
+    return raw
 
 def detect_answers(warped_np, total_soal=100):
+    """
+    LJK Sunib JAWABAN layout:
+    5 columns per answer block (A,B,C,D,E), read per ROW
+    Blocks arranged as:
+      Col1: Q1-10 (top), Q11-20 (bottom)
+      Col2: Q21-30 (top), Q31-40 (bottom)
+      Col3: Q41-50 (top), Q51-60 (bottom)
+      Col4: Q61-70 (top), Q71-80 (bottom)
+      Col5: Q81-90 (top), Q91-100 (bottom)
+    All in one big JAWABAN section at bottom of LJK
+    Warped image is 1000x1414
+    """
     CHOICES = ['A', 'B', 'C', 'D', 'E']
-    ROI_JAWABAN = [
-        (70,  930, 190, 1150,  1), (70,  1160, 190, 1390, 11),
-        (250, 930, 380, 1150, 21), (259, 1160, 380, 1390, 31),
-        (450, 930, 580, 1150, 41), (450, 1160, 580, 1390, 51),
-        (650, 930, 780, 1150, 61), (650, 1160, 780, 1390, 71),
-        (830, 930, 950, 1150, 81), (830, 1160, 950, 1390, 91),
+    # JAWABAN section starts around y=760, ends around y=1380
+    # 5 column-groups, each with 2 sub-blocks of 10 rows
+    # x positions of each column group (5 groups across width)
+    # Each group: answer bubbles for 5 choices (A-E)
+    # Layout (x1, y1_top, x2, y2_top, y1_bot, y2_bot, q_top_start, q_bot_start)
+    BLOCKS = [
+        # x1,  y1_top, x2,  y2_top, y1_bot, y2_bot, q_top, q_bot
+        ( 25,  760, 205, 1055,  1060, 1370,   1,  11),
+        (210,  760, 390, 1055,  1060, 1370,  21,  31),
+        (395,  760, 575, 1055,  1060, 1370,  41,  51),
+        (580,  760, 760, 1055,  1060, 1370,  61,  71),
+        (765,  760, 975, 1055,  1060, 1370,  81,  91),
     ]
     all_answers = {}
     soal_done = 0
-    for x1, y1, x2, y2, q_start in ROI_JAWABAN:
-        if soal_done >= total_soal: break
-        soal_di_blok = min(10, total_soal - soal_done)
-        roi = crop_gray(warped_np, y1, y2, x1, x2)
-        r_blok, *_ = scan_grid(roi, num_cols=5, num_rows=10, labels=CHOICES, per_row=True)
-        for i, ans in enumerate(r_blok[:soal_di_blok]):
-            all_answers[q_start + i] = ans
-        soal_done += soal_di_blok
+    for x1, y1t, x2, y2t, y1b, y2b, q_top, q_bot in BLOCKS:
+        # Top sub-block (10 questions)
+        if soal_done < total_soal:
+            n = min(10, total_soal - soal_done)
+            roi = crop_gray(warped_np, y1t, y2t, x1, x2)
+            r, *_ = scan_grid(roi, num_cols=5, num_rows=10, labels=CHOICES, per_row=True)
+            for i, ans in enumerate(r[:n]):
+                all_answers[q_top + i] = ans
+            soal_done += n
+        # Bottom sub-block (10 questions)
+        if soal_done < total_soal:
+            n = min(10, total_soal - soal_done)
+            roi = crop_gray(warped_np, y1b, y2b, x1, x2)
+            r, *_ = scan_grid(roi, num_cols=5, num_rows=10, labels=CHOICES, per_row=True)
+            for i, ans in enumerate(r[:n]):
+                all_answers[q_bot + i] = ans
+            soal_done += n
     return all_answers
 
 def score_answers(student_answers, answer_key):
