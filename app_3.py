@@ -210,31 +210,34 @@ def detect_tanggal(warped_np):
 
 def detect_mata_kuliah(warped_np):
     """
-    Kotak MERAH (Mata Kuliah) - digeser ke bawah
-    y: 400-480 (lebih rendah dari koordinat sebelumnya)
-    x: 550-950 (sisi kanan)
+    Kotak MERAH (Mata Kuliah) - digeser lebih ke bawah.
+    Area ini berada di bawah kolom NIM & Tanggal.
+    y: 450-530
+    x: 550-950
     """
-    roi = crop_gray(warped_np, 400, 480, 550, 950)
-    st.image(roi, caption="DEBUG: Area Mata Kuliah (DITURUNKAN)") 
+    roi = crop_gray(warped_np, 450, 530, 550, 950)
+    st.image(roi, caption="DEBUG: Area Mata Kuliah (GESER BAWAH)") 
     
-    # Karena ini tulisan tangan, hasil dari scan_grid mungkin tidak akurat
-    # Anda perlu OCR (seperti EasyOCR) untuk membaca teks ini
     results, *_ = scan_grid(roi, num_cols=20, num_rows=5, 
                              labels=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), per_row=False)
-    return ''.join(r or ' ' for r in results).strip() or "UNKNOWN"
+    nama_matkul = ''.join(r or ' ' for r in results).strip()
+    return nama_matkul if nama_matkul else "UNKNOWN"
 
 def detect_kode_kelas(warped_np):
     """
-    Kotak UNGU (Kode Kelas) - digeser ke bawah
-    y: 480-550 (tepat di bawah kotak merah)
+    Kotak UNGU (Kode Kelas) - digeser lebih ke bawah.
+    Area ini berada persis di bawah kotak merah mata kuliah.
+    y: 530-610
     x: 550-750
     """
-    roi = crop_gray(warped_np, 480, 550, 550, 750)
-    st.image(roi, caption="DEBUG: Area Kode Kelas (DITURUNKAN)")
+    roi = crop_gray(warped_np, 530, 610, 550, 750)
+    st.image(roi, caption="DEBUG: Area Kode Kelas (GESER BAWAH)")
     
     results, *_ = scan_grid(roi, num_cols=5, num_rows=5, 
                              labels=[str(i) for i in range(10)], per_row=False)
-    return ''.join(r or '_' for r in results)
+    kode = ''.join(r or '_' for r in results)
+    return kode
+
 def detect_answers(warped_np, total_soal=100):
     CHOICES = ['A', 'B', 'C', 'D', 'E']
     ROI_JAWABAN = [
