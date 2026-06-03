@@ -210,31 +210,32 @@ def detect_tanggal(warped_np):
 
 def detect_mata_kuliah(warped_np):
     """
-    Posisi: Atas Kanan (di bawah NIM & Tanggal)
+    Kotak MERAH (Mata Kuliah)
+    y: 350-420 (berada di tengah kanan)
+    x: 550-950 (lebar penuh di sisi kanan)
     """
-    # ROI: (y: 250-350, x: 550-950)
-    # Area ini adalah area Atas Kanan setelah NIM dan Tanggal
-    roi = crop_gray(warped_np, 250, 350, 550, 950)
+    roi = crop_gray(warped_np, 350, 420, 550, 950)
     st.image(roi, caption="DEBUG: Area Mata Kuliah") 
     
+    # Karena ini berupa teks tulis tangan, scan_grid mungkin tidak bisa langsung membacanya
+    # jika metode Anda adalah OCR, disarankan menggunakan pytesseract.
+    # Namun sesuai permintaan Anda, saya tetap gunakan scan_grid:
     results, *_ = scan_grid(roi, num_cols=20, num_rows=5, 
                              labels=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), per_row=False)
-    nama_matkul = ''.join(r or ' ' for r in results).strip()
-    return nama_matkul if nama_matkul else "UNKNOWN"
+    return ''.join(r or ' ' for r in results).strip() or "UNKNOWN"
 
 def detect_kode_kelas(warped_np):
     """
-    Posisi: Atas Kanan (di bawah Mata Kuliah)
+    Kotak UNGU (Kode Kelas)
+    y: 420-500 (tepat di bawah kotak merah)
+    x: 550-750 (hanya setengah sisi kanan)
     """
-    # ROI: (y: 350-450, x: 550-950)
-    # Area ini berada persis di bawah area Mata Kuliah
-    roi = crop_gray(warped_np, 350, 450, 550, 950)
+    roi = crop_gray(warped_np, 420, 500, 550, 750)
     st.image(roi, caption="DEBUG: Area Kode Kelas")
     
     results, *_ = scan_grid(roi, num_cols=5, num_rows=5, 
                              labels=[str(i) for i in range(10)], per_row=False)
-    kode = ''.join(r or '_' for r in results)
-    return kode
+    return ''.join(r or '_' for r in results)
 
 def detect_answers(warped_np, total_soal=100):
     CHOICES = ['A', 'B', 'C', 'D', 'E']
