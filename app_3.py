@@ -13,13 +13,6 @@ from skimage import filters, morphology, measure, transform, exposure
 from skimage.color import rgb2gray
 import warnings
 warnings.filterwarnings("ignore")
-import easyocr
-# Inisialisasi reader (hanya sekali di awal agar tidak lambat)
-@st.cache_resource
-def load_ocr():
-    return easyocr.Reader(['en'], gpu=False) # gpu=False jika tidak ada CUDA
-
-reader = load_ocr()
 
 DEFAULT_50 = ['B','C','A','D','E','A','B','C','D','A','E','B','C','A','D','B','E','A','C','D','A','B','E','C','D','B','A','D','C','E','A','C','B','D','E','C','A','B','D','E','B','D','A','C','E','A','D','B','E','C']
 def make_key_text(n):
@@ -225,8 +218,10 @@ def detect_mata_kuliah(warped_np):
     roi = crop_gray(warped_np, 520, 620, 550, 950)
     st.image(roi, caption="DEBUG: Area Mata Kuliah") 
     
-    result = reader.readtext(roi, detail=0)
-    return " ".join(result) if result else "TIDAK TERBACA"
+    results, *_ = scan_grid(roi, num_cols=20, num_rows=5, 
+                             labels=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), per_row=False)
+    nama_matkul = ''.join(r or ' ' for r in results).strip()
+    return nama_matkul if nama_matkul else "UNKNOWN"
 
 def detect_kode_kelas(warped_np):
     """
@@ -238,8 +233,10 @@ def detect_kode_kelas(warped_np):
     roi = crop_gray(warped_np, 630, 720, 550, 750)
     st.image(roi, caption="DEBUG: Area Kode Kelas")
     
-    result = reader.readtext(roi, detail=0)
-    return "".join(result) if result else "TIDAK TERBACA"
+    results, *_ = scan_grid(roi, num_cols=5, num_rows=5, 
+                             labels=[str(i) for i in range(10)], per_row=False)
+    kode = ''.join(r or '_' for r in results)
+    return kode
 
 def detect_answers(warped_np, total_soal=100):
     CHOICES = ['A', 'B', 'C', 'D', 'E']
