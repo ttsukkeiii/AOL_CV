@@ -208,6 +208,33 @@ def detect_tanggal(warped_np):
     raw = ''.join(r or '_' for r in results)
     return f"{raw[0:2]}/{raw[2:4]}/{raw[4:6]}" if len(raw) >= 6 else raw
 
+def detect_mata_kuliah(warped_np):
+    """
+    Deteksi nama mata kuliah. 
+    ROI: (y1, y2, x1, x2) - Sesuaikan koordinat ini dengan lokasi 
+    kotak nama mata kuliah pada LJK Anda.
+    """
+    roi = crop_gray(warped_np, 50, 150, 50, 500) 
+    # Menggunakan grid 20 kolom (karakter) dan 5 baris (opsi karakter)
+    results, *_ = scan_grid(roi, num_cols=20, num_rows=5, 
+                             labels=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), per_row=False)
+    # Membersihkan hasil deteksi
+    nama_matkul = ''.join(r or ' ' for r in results).strip()
+    return nama_matkul if nama_matkul else "UNKNOWN"
+
+def detect_kode_kelas(warped_np):
+    """
+    Deteksi kode kelas.
+    ROI: (y1, y2, x1, x2) - Sesuaikan koordinat ini dengan lokasi 
+    kotak kode kelas pada LJK Anda.
+    """
+    roi = crop_gray(warped_np, 50, 150, 600, 950)
+    # Menggunakan grid 10 kolom (digit) dan 5 baris (opsi angka 0-9)
+    results, *_ = scan_grid(roi, num_cols=10, num_rows=5, 
+                             labels=[str(i) for i in range(10)], per_row=False)
+    kode = ''.join(r or '_' for r in results)
+    return kode
+
 def detect_answers(warped_np, total_soal=100):
     CHOICES = ['A', 'B', 'C', 'D', 'E']
     ROI_JAWABAN = [
@@ -390,6 +417,8 @@ elif st.session_state.step == 'scan':
                     nama    = detect_nama(warped_np)
                     nim     = detect_nim(warped_np)
                     tanggal = detect_tanggal(warped_np)
+                    matkul      = detect_mata_kuliah(warped_np)
+                    kode_kelas  = detect_kode_kelas(warped_np)
                     answers = detect_answers(warped_np, st.session_state.total_soal)
                 correct, wrong, unanswered = score_answers(answers, st.session_state.answer_key)
                 score = compute_score(correct, st.session_state.total_soal, st.session_state.scoring)
@@ -399,7 +428,9 @@ elif st.session_state.step == 'scan':
                     (m3,wrong,"Salah","#ef4444"),(m4,unanswered,"Kosong","#94a3b8"),
                     (m5,nim,"NIM","#f59e0b")]:
                     col.markdown(f'<div class="metric-card"><div class="val" style="color:{color};font-size:{"2rem" if lbl!="NIM" else "1rem"}">{val}</div><div class="lbl">{lbl}</div></div>', unsafe_allow_html=True)
-                st.markdown(f"**Nama:** {nama}  |  **Tanggal:** {tanggal}")
+                st.markdown(f"""**Nama:** {nama}  |  **Tanggal:** {tanggal}
+                **Mata Kuliah:** {matkul}  |  **Kode Kelas:** {kode_kelas}
+                """)
                 with st.expander("📋 Detail Jawaban per Soal"):
                     cols_grid = st.columns(10)
                     for q in range(1, st.session_state.total_soal+1):
@@ -410,7 +441,7 @@ elif st.session_state.step == 'scan':
                             elif s_ans==k_ans: lbl,bg = f"**{q}**: {s_ans} ✓","#14532d"
                             else: lbl,bg = f"**{q}**: {s_ans} ✗","#450a0a"
                             st.markdown(f'<div style="background:{bg};border-radius:4px;padding:3px 5px;font-size:0.7rem;margin-bottom:4px;text-align:center">{lbl}</div>', unsafe_allow_html=True)
-                record = {'filename':uploaded.name,'nama':nama,'nim':nim,'tanggal':tanggal,
+                record = {'filename':uploaded.name,'nama':nama,'nim':nim,'matkul': matkul, 'kode_kelas': kode_kelas, 'tanggal':tanggal,
                           'correct':correct,'wrong':wrong,'unanswered':unanswered,'score':score,
                           'total_soal':st.session_state.total_soal,
                           'student_answers':{str(k):v for k,v in answers.items()},
