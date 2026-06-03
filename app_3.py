@@ -210,23 +210,25 @@ def detect_tanggal(warped_np):
 
 def detect_mata_kuliah(warped_np):
     """
-    Posisi: Di bawah NIM & Tanggal.
-    ROI: (y: 350-450, x: 200-600) - Sesuaikan jika masih meleset
+    Posisi: Atas Kanan (di bawah NIM & Tanggal)
     """
-    roi = crop_gray(warped_np, 350, 450, 200, 600)
+    # ROI: (y: 250-350, x: 550-950)
+    # Area ini adalah area Atas Kanan setelah NIM dan Tanggal
+    roi = crop_gray(warped_np, 250, 350, 550, 950)
     st.image(roi, caption="DEBUG: Area Mata Kuliah") 
     
     results, *_ = scan_grid(roi, num_cols=20, num_rows=5, 
                              labels=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), per_row=False)
     nama_matkul = ''.join(r or ' ' for r in results).strip()
-    return nama_matkul if nama_matkul else "TIDAK TERDETEKSI"
+    return nama_matkul if nama_matkul else "UNKNOWN"
 
 def detect_kode_kelas(warped_np):
     """
-    Posisi: Di bawah Mata Kuliah, di sisi kiri.
-    ROI: (y: 450-550, x: 200-400)
+    Posisi: Atas Kanan (di bawah Mata Kuliah)
     """
-    roi = crop_gray(warped_np, 450, 550, 200, 400)
+    # ROI: (y: 350-450, x: 550-950)
+    # Area ini berada persis di bawah area Mata Kuliah
+    roi = crop_gray(warped_np, 350, 450, 550, 950)
     st.image(roi, caption="DEBUG: Area Kode Kelas")
     
     results, *_ = scan_grid(roi, num_cols=5, num_rows=5, 
