@@ -210,37 +210,31 @@ def detect_tanggal(warped_np):
 
 def detect_mata_kuliah(warped_np):
     """
-    Kotak MERAH (Mata Kuliah)
-    Berada di bawah baris NIM & Tanggal.
-    y: 360-420 (Sangat spesifik di area tengah kanan)
-    x: 550-950 (Lebar penuh sisi kanan)
+    Kotak MERAH (Mata Kuliah) - digeser ke bawah
+    y: 400-480 (lebih rendah dari koordinat sebelumnya)
+    x: 550-950 (sisi kanan)
     """
-    roi = crop_gray(warped_np, 360, 420, 550, 950)
-    st.image(roi, caption="DEBUG: Area Mata Kuliah (Kotak Merah)") 
+    roi = crop_gray(warped_np, 400, 480, 550, 950)
+    st.image(roi, caption="DEBUG: Area Mata Kuliah (DITURUNKAN)") 
     
-    # scan_grid untuk teks tulisan tangan sangat sulit. 
-    # Jika hasil tetap UNKNOWN, ini karena metode scan_grid memang TIDAK didesain 
-    # untuk membaca tulisan tangan (OCR), melainkan untuk bulatan (bubble).
+    # Karena ini tulisan tangan, hasil dari scan_grid mungkin tidak akurat
+    # Anda perlu OCR (seperti EasyOCR) untuk membaca teks ini
     results, *_ = scan_grid(roi, num_cols=20, num_rows=5, 
                              labels=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), per_row=False)
-    nama_matkul = ''.join(r or ' ' for r in results).strip()
-    return nama_matkul if nama_matkul else "UNKNOWN"
+    return ''.join(r or ' ' for r in results).strip() or "UNKNOWN"
 
 def detect_kode_kelas(warped_np):
     """
-    Kotak UNGU (Kode Kelas)
-    Tepat di bawah kotak merah.
-    y: 420-480
-    x: 550-750 (Sisi kanan-tengah)
+    Kotak UNGU (Kode Kelas) - digeser ke bawah
+    y: 480-550 (tepat di bawah kotak merah)
+    x: 550-750
     """
-    roi = crop_gray(warped_np, 420, 480, 550, 750)
-    st.image(roi, caption="DEBUG: Area Kode Kelas (Kotak Ungu)")
+    roi = crop_gray(warped_np, 480, 550, 550, 750)
+    st.image(roi, caption="DEBUG: Area Kode Kelas (DITURUNKAN)")
     
     results, *_ = scan_grid(roi, num_cols=5, num_rows=5, 
                              labels=[str(i) for i in range(10)], per_row=False)
-    kode = ''.join(r or '_' for r in results)
-    return kode
-
+    return ''.join(r or '_' for r in results)
 def detect_answers(warped_np, total_soal=100):
     CHOICES = ['A', 'B', 'C', 'D', 'E']
     ROI_JAWABAN = [
