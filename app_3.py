@@ -212,10 +212,10 @@ def detect_mata_kuliah(warped_np):
     """
     Kotak MERAH (Mata Kuliah) - digeser lebih ke bawah.
     Area ini berada di bawah kolom NIM & Tanggal.
-    y: 450-530
+    y: 530-610
     x: 550-950
     """
-    roi = crop_gray(warped_np, 450, 530, 550, 950)
+    roi = crop_gray(warped_np, 530, 610, 550, 950)
     st.image(roi, caption="DEBUG: Area Mata Kuliah (GESER BAWAH)") 
     
     results, *_ = scan_grid(roi, num_cols=20, num_rows=5, 
@@ -227,10 +227,10 @@ def detect_kode_kelas(warped_np):
     """
     Kotak UNGU (Kode Kelas) - digeser lebih ke bawah.
     Area ini berada persis di bawah kotak merah mata kuliah.
-    y: 530-610
+    y: 610-690
     x: 550-750
     """
-    roi = crop_gray(warped_np, 530, 610, 550, 750)
+    roi = crop_gray(warped_np, 610, 690, 550, 750)
     st.image(roi, caption="DEBUG: Area Kode Kelas (GESER BAWAH)")
     
     results, *_ = scan_grid(roi, num_cols=5, num_rows=5, 
