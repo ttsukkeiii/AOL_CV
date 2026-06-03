@@ -209,17 +209,28 @@ def detect_tanggal(warped_np):
     return f"{raw[0:2]}/{raw[2:4]}/{raw[4:6]}" if len(raw) >= 6 else raw
 
 def detect_mata_kuliah(warped_np):
-    # ROI: (y1, y2, x1, x2)
-    # Sesuaikan agar berada di area "MATA KULIAH" (tengah atas)
-    roi = crop_gray(warped_np, 50, 150, 300, 600) 
-    results, *_ = scan_grid(roi, num_cols=15, num_rows=5, labels=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), per_row=False)
-    return ''.join(r or ' ' for r in results).strip()
+    """
+    Sesuaikan y1, y2, x1, x2 berdasarkan kotak 'MATA KULIAH' 
+    pada hasil warped image (1000x1414).
+    """
+    # Mencoba area yang lebih spesifik di bagian tengah atas
+    roi = crop_gray(warped_np, 150, 250, 100, 600) 
+    # Tambahkan ini untuk melihat potongan gambar yang sedang dibaca
+    st.image(roi, caption="DEBUG: Area Mata Kuliah")
+    results, *_ = scan_grid(roi, num_cols=20, num_rows=5, 
+                             labels=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), per_row=False)
+    nama_matkul = ''.join(r or ' ' for r in results).strip()
+    return nama_matkul if nama_matkul else "TIDAK TERDETEKSI"
 
 def detect_kode_kelas(warped_np):
-    # ROI: Area "KODE KELAS" (kanan atas)
-    roi = crop_gray(warped_np, 50, 150, 650, 950)
-    results, *_ = scan_grid(roi, num_cols=5, num_rows=5, labels=[str(i) for i in range(10)], per_row=False)
-    return ''.join(r or '_' for r in results)
+    """
+    Sesuaikan koordinat berdasarkan kotak 'KODE KELAS' di kanan atas.
+    """
+    roi = crop_gray(warped_np, 150, 250, 700, 950)
+    results, *_ = scan_grid(roi, num_cols=5, num_rows=5, 
+                             labels=[str(i) for i in range(10)], per_row=False)
+    kode = ''.join(r or '_' for r in results)
+    return kode
 
 def detect_answers(warped_np, total_soal=100):
     CHOICES = ['A', 'B', 'C', 'D', 'E']
