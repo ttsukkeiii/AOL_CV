@@ -209,23 +209,30 @@ def detect_tanggal(warped_np):
     return f"{raw[0:2]}/{raw[2:4]}/{raw[4:6]}" if len(raw) >= 6 else raw
 
 def detect_mata_kuliah(warped_np):
-    # y1: 150-250 (turunkan sedikit agar tidak kena tepi), x1: 50-500 (geser ke area teks)
-    roi = crop_gray(warped_np, 150, 250, 100, 500) 
-    # Tambahkan baris debug ini untuk melihat hasilnya di Streamlit
+    """
+    Posisi: Di bawah NIM & Tanggal.
+    ROI: (y: 350-450, x: 200-600) - Sesuaikan jika masih meleset
+    """
+    roi = crop_gray(warped_np, 350, 450, 200, 600)
     st.image(roi, caption="DEBUG: Area Mata Kuliah") 
     
     results, *_ = scan_grid(roi, num_cols=20, num_rows=5, 
                              labels=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), per_row=False)
-    return ''.join(r or ' ' for r in results).strip() or "UNKNOWN"
+    nama_matkul = ''.join(r or ' ' for r in results).strip()
+    return nama_matkul if nama_matkul else "TIDAK TERDETEKSI"
 
 def detect_kode_kelas(warped_np):
-    # y1: 150-250, x1: 600-950 (area kanan atas)
-    roi = crop_gray(warped_np, 150, 250, 600, 950)
+    """
+    Posisi: Di bawah Mata Kuliah, di sisi kiri.
+    ROI: (y: 450-550, x: 200-400)
+    """
+    roi = crop_gray(warped_np, 450, 550, 200, 400)
     st.image(roi, caption="DEBUG: Area Kode Kelas")
     
     results, *_ = scan_grid(roi, num_cols=5, num_rows=5, 
                              labels=[str(i) for i in range(10)], per_row=False)
-    return ''.join(r or '_' for r in results)
+    kode = ''.join(r or '_' for r in results)
+    return kode
 
 def detect_answers(warped_np, total_soal=100):
     CHOICES = ['A', 'B', 'C', 'D', 'E']
