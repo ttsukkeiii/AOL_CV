@@ -14,6 +14,15 @@ from skimage.color import rgb2gray
 import warnings
 warnings.filterwarnings("ignore")
 
+DEFAULT_50 = ['B','C','A','D','E','A','B','C','D','A','E','B','C','A','D','B','E','A','C','D','A','B','E','C','D','B','A','D','C','E','A','C','B','D','E','C','A','B','D','E','B','D','A','C','E','A','D','B','E','C']
+def make_key_text(n):
+    lines = []
+    for i in range(1, n+1):
+        ans = DEFAULT_50[i-1] if i <= 50 else 'A'
+        lines.append(f"{i}. {ans}")
+    return "\n".join(lines)
+
+
 # ─── PAGE CONFIG ────────────────────────────────────────────
 st.set_page_config(
     page_title="LJK Scanner — CV Project",
@@ -183,41 +192,91 @@ def crop_gray(warped_np, y1, y2, x1, x2):
     return to_gray_np(roi)
 
 def detect_nama(warped_np):
+    """
+    LJK Sunib: NAMA MAHASISWA area
+    Rows = A-Z (26 rows), Cols = 20 character positions
+    Located roughly top-left of the form, below header
+    """
     ALPHABET = list('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-    roi = crop_gray(warped_np, 270, 850, 40, 520)
+    # ROI: (y1, y2, x1, x2) after warp to 1000x1414
+    roi = crop_gray(warped_np, 200, 720, 25, 490)
     results, *_ = scan_grid(roi, num_cols=20, num_rows=26, labels=ALPHABET, per_row=False)
-    return ''.join(r or '_' for r in results).replace('_', ' ').strip()
+    nama = ''.join(r or ' ' for r in results).strip()
+    # Clean up multiple spaces
+    import re
+    nama = re.sub(r' +', ' ', nama)
+    return nama or 'UNKNOWN'
 
 def detect_nim(warped_np):
-    roi = crop_gray(warped_np, 270, 500, 550, 790)
-    results, *_ = scan_grid(roi, num_cols=10, num_rows=10, labels=[str(i) for i in range(10)], per_row=False)
+    """
+    LJK Sunib: NOMOR INDUK MAHASISWA
+    10 columns, rows = 0-9
+    Located top-right area
+    """
+    roi = crop_gray(warped_np, 200, 530, 510, 760)
+    results, *_ = scan_grid(roi, num_cols=10, num_rows=10,
+                             labels=[str(i) for i in range(10)], per_row=False)
     return ''.join(r or '_' for r in results)
 
 def detect_tanggal(warped_np):
-    roi = crop_gray(warped_np, 270, 500, 820, 970)
-    results, *_ = scan_grid(roi, num_cols=6, num_rows=10, labels=[str(i) for i in range(10)], per_row=False)
+    """
+    LJK Sunib: TANGGAL — 6 columns (DD MM YY), rows = 0-9
+    Located top-right corner
+    """
+    roi = crop_gray(warped_np, 200, 530, 780, 970)
+    results, *_ = scan_grid(roi, num_cols=6, num_rows=10,
+                             labels=[str(i) for i in range(10)], per_row=False)
     raw = ''.join(r or '_' for r in results)
-    return f"{raw[0:2]}/{raw[2:4]}/{raw[4:6]}" if len(raw) >= 6 else raw
+    if len(raw) >= 6:
+        return f"{raw[0:2]}/{raw[2:4]}/{raw[4:6]}"
+    return raw
 
 def detect_answers(warped_np, total_soal=100):
+    """
+    LJK Sunib JAWABAN layout:
+    5 columns per answer block (A,B,C,D,E), read per ROW
+    Blocks arranged as:
+      Col1: Q1-10 (top), Q11-20 (bottom)
+      Col2: Q21-30 (top), Q31-40 (bottom)
+      Col3: Q41-50 (top), Q51-60 (bottom)
+      Col4: Q61-70 (top), Q71-80 (bottom)
+      Col5: Q81-90 (top), Q91-100 (bottom)
+    All in one big JAWABAN section at bottom of LJK
+    Warped image is 1000x1414
+    """
     CHOICES = ['A', 'B', 'C', 'D', 'E']
-    ROI_JAWABAN = [
-        (70,  930, 190, 1150,  1), (70,  1160, 190, 1390, 11),
-        (250, 930, 380, 1150, 21), (259, 1160, 380, 1390, 31),
-        (450, 930, 580, 1150, 41), (450, 1160, 580, 1390, 51),
-        (650, 930, 780, 1150, 61), (650, 1160, 780, 1390, 71),
-        (830, 930, 950, 1150, 81), (830, 1160, 950, 1390, 91),
+    # JAWABAN section starts around y=760, ends around y=1380
+    # 5 column-groups, each with 2 sub-blocks of 10 rows
+    # x positions of each column group (5 groups across width)
+    # Each group: answer bubbles for 5 choices (A-E)
+    # Layout (x1, y1_top, x2, y2_top, y1_bot, y2_bot, q_top_start, q_bot_start)
+    BLOCKS = [
+        # x1,  y1_top, x2,  y2_top, y1_bot, y2_bot, q_top, q_bot
+        ( 25,  760, 205, 1055,  1060, 1370,   1,  11),
+        (210,  760, 390, 1055,  1060, 1370,  21,  31),
+        (395,  760, 575, 1055,  1060, 1370,  41,  51),
+        (580,  760, 760, 1055,  1060, 1370,  61,  71),
+        (765,  760, 975, 1055,  1060, 1370,  81,  91),
     ]
     all_answers = {}
     soal_done = 0
-    for x1, y1, x2, y2, q_start in ROI_JAWABAN:
-        if soal_done >= total_soal: break
-        soal_di_blok = min(10, total_soal - soal_done)
-        roi = crop_gray(warped_np, y1, y2, x1, x2)
-        r_blok, *_ = scan_grid(roi, num_cols=5, num_rows=10, labels=CHOICES, per_row=True)
-        for i, ans in enumerate(r_blok[:soal_di_blok]):
-            all_answers[q_start + i] = ans
-        soal_done += soal_di_blok
+    for x1, y1t, x2, y2t, y1b, y2b, q_top, q_bot in BLOCKS:
+        # Top sub-block (10 questions)
+        if soal_done < total_soal:
+            n = min(10, total_soal - soal_done)
+            roi = crop_gray(warped_np, y1t, y2t, x1, x2)
+            r, *_ = scan_grid(roi, num_cols=5, num_rows=10, labels=CHOICES, per_row=True)
+            for i, ans in enumerate(r[:n]):
+                all_answers[q_top + i] = ans
+            soal_done += n
+        # Bottom sub-block (10 questions)
+        if soal_done < total_soal:
+            n = min(10, total_soal - soal_done)
+            roi = crop_gray(warped_np, y1b, y2b, x1, x2)
+            r, *_ = scan_grid(roi, num_cols=5, num_rows=10, labels=CHOICES, per_row=True)
+            for i, ans in enumerate(r[:n]):
+                all_answers[q_bot + i] = ans
+            soal_done += n
     return all_answers
 
 def score_answers(student_answers, answer_key):
@@ -313,21 +372,29 @@ if st.session_state.step == 'setup':
         st.session_state.sesi_nama  = st.text_input("Nama Sesi / Mata Kuliah", value=st.session_state.sesi_nama or "Computer Vision UAS")
         st.session_state.kode_kelas = st.text_input("Kode Kelas", value=st.session_state.kode_kelas or "LK01")
         st.session_state.kode_dosen = st.text_input("Kode Dosen", value=st.session_state.kode_dosen or "DS123")
-        st.session_state.total_soal = st.number_input("Jumlah Soal (1–100)", min_value=1, max_value=100, value=st.session_state.total_soal)
+        new_total = st.number_input("Jumlah Soal (1–100)", min_value=1, max_value=100, value=st.session_state.total_soal)
+        if new_total != st.session_state.total_soal:
+            st.session_state.total_soal = new_total
+            st.session_state.key_text = make_key_text(new_total)
+            st.rerun()
         st.session_state.scoring    = st.selectbox("Metode Penilaian", ["standard","penalty"],
             format_func=lambda x: "Standar (benar/total × 100)" if x=="standard" else "Penalty (-0.25 per salah)")
     with col2:
         st.subheader("Kunci Jawaban")
         total = st.session_state.total_soal
         if 'key_text' not in st.session_state:
-            st.session_state.key_text = "\n".join(f"{i},A" for i in range(1, total+1))
-        key_text = st.text_area("Format: `1,A` `2,B` dll.", value=st.session_state.key_text, height=300, label_visibility="collapsed")
+            st.session_state.key_text = make_key_text(total)
+        key_text = st.text_area("Format: `1. A` `2. B` dll.", value=st.session_state.key_text, height=300, label_visibility="collapsed")
         st.session_state.key_text = key_text
         answer_key = {}; errors = []
         for line in key_text.strip().split('\n'):
             line = line.strip()
             if not line: continue
-            parts = line.split(',')
+            # support both "1. A" and "1,A"
+            if '. ' in line:
+                parts = line.split('. ', 1)
+            else:
+                parts = line.split(',', 1)
             if len(parts) != 2: errors.append(f"Format salah: `{line}`"); continue
             try:
                 q = int(parts[0].strip()); ans = parts[1].strip().upper()
