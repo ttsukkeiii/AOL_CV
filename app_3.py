@@ -428,7 +428,7 @@ elif st.session_state.step == 'scan':
                     (m3,wrong,"Salah","#ef4444"),(m4,unanswered,"Kosong","#94a3b8"),
                     (m5,nim,"NIM","#f59e0b")]:
                     col.markdown(f'<div class="metric-card"><div class="val" style="color:{color};font-size:{"2rem" if lbl!="NIM" else "1rem"}">{val}</div><div class="lbl">{lbl}</div></div>', unsafe_allow_html=True)
-                st.markdown(f"""**Nama:** {nama}  |  **Tanggal:** {tanggal}
+                st.markdown(f"""**Nama:** {nama}  |  **Tanggal:** {tanggal} |
                 **Mata Kuliah:** {matkul}  |  **Kode Kelas:** {kode_kelas}
                 """)
                 with st.expander("📋 Detail Jawaban per Soal"):
