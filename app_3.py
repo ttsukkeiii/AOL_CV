@@ -14,15 +14,14 @@ from skimage.color import rgb2gray
 import warnings
 warnings.filterwarnings("ignore")
 
-# --- FITUR BARU (Poin 1) ---
 DEFAULT_50 = ['B','C','A','D','E','A','B','C','D','A','E','B','C','A','D','B','E','A','C','D','A','B','E','C','D','B','A','D','C','E','A','C','B','D','E','C','A','B','D','E','B','D','A','C','E','A','D','B','E','C']
-
 def make_key_text(n):
     lines = []
     for i in range(1, n+1):
         ans = DEFAULT_50[i-1] if i <= 50 else 'A'
         lines.append(f"{i}. {ans}")
     return "\n".join(lines)
+
 
 # ─── PAGE CONFIG ────────────────────────────────────────────
 st.set_page_config(
@@ -42,40 +41,14 @@ st.markdown("""
     text-align: center; color: #f1f5f9;
   }
   .metric-card .val { font-size: 2rem; font-weight: 700; color: #38bdf8; }
-  .metric-card .lbl { font-size: .8rem; color: #94a3b8; margin-top: 5px; }
+  .metric-card .lbl { font-size: .8rem; color: #94a3b8; margin-top: 2px; }
+  .stButton>button {
+    background: #0ea5e9; color: white; border: none;
+    border-radius: 8px; font-weight: 600; padding: 8px 20px;
+  }
+  .stButton>button:hover { background: #0284c7; }
 </style>
 """, unsafe_allow_html=True)
-
-# --- SIDEBAR LOGIKA (Poin 2 & 3) ---
-st.sidebar.header("Pengaturan LJK")
-
-# Input jumlah soal
-new_total = st.sidebar.number_input("Jumlah Soal", min_value=1, max_value=100, value=50)
-
-# Inisialisasi session state untuk kunci jawaban
-if "total_soal" not in st.session_state or st.session_state.total_soal != new_total:
-    st.session_state.total_soal = new_total
-    st.session_state.key_text = make_key_text(new_total)
-    st.rerun()
-
-# Input kunci jawaban (Mendukung format 1. A dan 1,A)
-key_input = st.sidebar.text_area("Kunci Jawaban", value=st.session_state.key_text, height=200)
-key_dict = {}
-for line in key_input.split('\n'):
-    line = line.strip()
-    if not line: continue
-    
-    # Deteksi pemisah titik atau koma
-    if '.' in line:
-        parts = line.split('.')
-    else:
-        parts = line.split(',')
-        
-    if len(parts) >= 2:
-        try:
-            key_dict[int(parts[0].strip())] = parts[1].strip().upper()
-        except:
-            continue
 
 # ─── IMAGE PROCESSING HELPERS (no cv2) ──────────────────────
 
@@ -349,21 +322,29 @@ if st.session_state.step == 'setup':
         st.session_state.sesi_nama  = st.text_input("Nama Sesi / Mata Kuliah", value=st.session_state.sesi_nama or "Computer Vision UAS")
         st.session_state.kode_kelas = st.text_input("Kode Kelas", value=st.session_state.kode_kelas or "LK01")
         st.session_state.kode_dosen = st.text_input("Kode Dosen", value=st.session_state.kode_dosen or "DS123")
-        st.session_state.total_soal = st.number_input("Jumlah Soal (1–100)", min_value=1, max_value=100, value=st.session_state.total_soal)
+        new_total = st.number_input("Jumlah Soal (1–100)", min_value=1, max_value=100, value=st.session_state.total_soal)
+        if new_total != st.session_state.total_soal:
+            st.session_state.total_soal = new_total
+            st.session_state.key_text = make_key_text(new_total)
+            st.rerun()
         st.session_state.scoring    = st.selectbox("Metode Penilaian", ["standard","penalty"],
             format_func=lambda x: "Standar (benar/total × 100)" if x=="standard" else "Penalty (-0.25 per salah)")
     with col2:
         st.subheader("Kunci Jawaban")
         total = st.session_state.total_soal
         if 'key_text' not in st.session_state:
-            st.session_state.key_text = "\n".join(f"{i},A" for i in range(1, total+1))
-        key_text = st.text_area("Format: `1,A` `2,B` dll.", value=st.session_state.key_text, height=300, label_visibility="collapsed")
+            st.session_state.key_text = make_key_text(total)
+        key_text = st.text_area("Format: `1. A` `2. B` dll.", value=st.session_state.key_text, height=300, label_visibility="collapsed")
         st.session_state.key_text = key_text
         answer_key = {}; errors = []
         for line in key_text.strip().split('\n'):
             line = line.strip()
             if not line: continue
-            parts = line.split(',')
+            # support both "1. A" and "1,A"
+            if '. ' in line:
+                parts = line.split('. ', 1)
+            else:
+                parts = line.split(',', 1)
             if len(parts) != 2: errors.append(f"Format salah: `{line}`"); continue
             try:
                 q = int(parts[0].strip()); ans = parts[1].strip().upper()
