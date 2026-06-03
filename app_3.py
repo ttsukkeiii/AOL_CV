@@ -216,7 +216,7 @@ def detect_mata_kuliah(warped_np):
     x: 550-950
     """
     roi = crop_gray(warped_np, 520, 620, 550, 950)
-    st.image(roi, caption="DEBUG: Area Mata Kuliah (GESER BAWAH)") 
+    st.image(roi, caption="DEBUG: Area Mata Kuliah") 
     
     results, *_ = scan_grid(roi, num_cols=20, num_rows=5, 
                              labels=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), per_row=False)
@@ -227,11 +227,11 @@ def detect_kode_kelas(warped_np):
     """
     Kotak UNGU (Kode Kelas) - digeser lebih ke bawah.
     Area ini berada persis di bawah kotak merah mata kuliah.
-    y: 640-740
+    y: 630-720
     x: 550-750
     """
-    roi = crop_gray(warped_np, 640, 740, 550, 750)
-    st.image(roi, caption="DEBUG: Area Kode Kelas (GESER BAWAH)")
+    roi = crop_gray(warped_np, 630, 720, 550, 750)
+    st.image(roi, caption="DEBUG: Area Kode Kelas")
     
     results, *_ = scan_grid(roi, num_cols=5, num_rows=5, 
                              labels=[str(i) for i in range(10)], per_row=False)
