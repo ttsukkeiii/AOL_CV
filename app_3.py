@@ -222,7 +222,7 @@ def detect_mata_kuliah(warped_np):
     y: 520-620
     x: 550-950
     """
-    roi = crop_gray(warped_np, 520, 620, 550, 950)
+    roi = crop_gray(warped_np, 550, 620, 550, 950)
     st.image(roi, caption="DEBUG: Area Mata Kuliah") 
     
     result = reader.readtext(roi, detail=0)
@@ -235,7 +235,7 @@ def detect_kode_kelas(warped_np):
     y: 630-720
     x: 550-750
     """
-    roi = crop_gray(warped_np, 630, 720, 550, 750)
+    roi = crop_gray(warped_np, 660, 720, 550, 750)
     st.image(roi, caption="DEBUG: Area Kode Kelas")
     
     result = reader.readtext(roi, detail=0)
