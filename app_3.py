@@ -209,31 +209,17 @@ def detect_tanggal(warped_np):
     return f"{raw[0:2]}/{raw[2:4]}/{raw[4:6]}" if len(raw) >= 6 else raw
 
 def detect_mata_kuliah(warped_np):
-    """
-    Deteksi nama mata kuliah. 
-    ROI: (y1, y2, x1, x2) - Sesuaikan koordinat ini dengan lokasi 
-    kotak nama mata kuliah pada LJK Anda.
-    """
-    roi = crop_gray(warped_np, 50, 150, 50, 500) 
-    # Menggunakan grid 20 kolom (karakter) dan 5 baris (opsi karakter)
-    results, *_ = scan_grid(roi, num_cols=20, num_rows=5, 
-                             labels=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), per_row=False)
-    # Membersihkan hasil deteksi
-    nama_matkul = ''.join(r or ' ' for r in results).strip()
-    return nama_matkul if nama_matkul else "UNKNOWN"
+    # ROI: (y1, y2, x1, x2)
+    # Sesuaikan agar berada di area "MATA KULIAH" (tengah atas)
+    roi = crop_gray(warped_np, 50, 150, 300, 600) 
+    results, *_ = scan_grid(roi, num_cols=15, num_rows=5, labels=list('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), per_row=False)
+    return ''.join(r or ' ' for r in results).strip()
 
 def detect_kode_kelas(warped_np):
-    """
-    Deteksi kode kelas.
-    ROI: (y1, y2, x1, x2) - Sesuaikan koordinat ini dengan lokasi 
-    kotak kode kelas pada LJK Anda.
-    """
-    roi = crop_gray(warped_np, 50, 150, 600, 950)
-    # Menggunakan grid 10 kolom (digit) dan 5 baris (opsi angka 0-9)
-    results, *_ = scan_grid(roi, num_cols=10, num_rows=5, 
-                             labels=[str(i) for i in range(10)], per_row=False)
-    kode = ''.join(r or '_' for r in results)
-    return kode
+    # ROI: Area "KODE KELAS" (kanan atas)
+    roi = crop_gray(warped_np, 50, 150, 650, 950)
+    results, *_ = scan_grid(roi, num_cols=5, num_rows=5, labels=[str(i) for i in range(10)], per_row=False)
+    return ''.join(r or '_' for r in results)
 
 def detect_answers(warped_np, total_soal=100):
     CHOICES = ['A', 'B', 'C', 'D', 'E']
