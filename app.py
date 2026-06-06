@@ -74,13 +74,13 @@ h1, h2, h3 { font-family: 'DM Serif Display', serif !important; color: var(--cre
   line-height: 1.15;
   letter-spacing: -0.02em;
 }
-.serif-title span { color: var(--steel); font-style: italic; }
+.serif-title span { color: var(--cream); font-style: italic; background: linear-gradient(135deg, #EAE0CF, #7288AE); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .section-label {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.68rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--steel);
+  color: #9BAABF;
   margin-bottom: 0.4rem;
 }
 .page-subtitle {
@@ -113,13 +113,14 @@ h1, h2, h3 { font-family: 'DM Serif Display', serif !important; color: var(--cre
 }
 .step-item:last-child { border-right: none; }
 .step-item.active {
-  background: rgba(74,86,148,0.25);
+  background: linear-gradient(180deg, rgba(74,86,148,0.3), rgba(17,24,68,0.4));
   color: var(--cream);
   font-weight: 600;
+  border-bottom: 2px solid #EAE0CF;
 }
 .step-item.done {
-  background: rgba(61,139,110,0.12);
-  color: #6DBF9E;
+  background: rgba(74,86,148,0.12);
+  color: #7288AE;
 }
 .step-icon { font-size: 1rem; display: block; margin-bottom: 3px; }
 
@@ -127,6 +128,7 @@ h1, h2, h3 { font-family: 'DM Serif Display', serif !important; color: var(--cre
 .card {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(74,86,148,0.25);
+  border-top: 2px solid rgba(234,224,207,0.3);
   border-radius: 16px;
   padding: 1.5rem 1.8rem;
   margin-bottom: 1rem;
@@ -148,12 +150,13 @@ h1, h2, h3 { font-family: 'DM Serif Display', serif !important; color: var(--cre
 .metric-tile {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(74,86,148,0.2);
+  border-top: 2px solid rgba(234,224,207,0.2);
   border-radius: 14px;
   padding: 18px 14px;
   text-align: center;
-  transition: transform .2s, border-color .2s;
+  transition: transform .2s, border-color .2s, border-top-color .2s;
 }
-.metric-tile:hover { transform: translateY(-2px); border-color: var(--steel); }
+.metric-tile:hover { transform: translateY(-2px); border-color: var(--steel); border-top-color: rgba(234,224,207,0.55); }
 .metric-tile .t-val {
   font-family: 'DM Serif Display', serif;
   font-size: 2rem;
@@ -213,9 +216,9 @@ label, .stSelectbox label, .stTextInput label,
   letter-spacing: 0.04em !important;
 }
 .stButton > button {
-  background: var(--mid) !important;
-  color: var(--cream) !important;
-  border: none !important;
+  background: linear-gradient(135deg, #4B5694, #3d4878) !important;
+  color: #EAE0CF !important;
+  border: 1px solid rgba(234,224,207,0.15) !important;
   border-radius: 10px !important;
   font-family: 'DM Sans', sans-serif !important;
   font-weight: 600 !important;
@@ -224,9 +227,10 @@ label, .stSelectbox label, .stTextInput label,
   letter-spacing: 0.02em !important;
 }
 .stButton > button:hover {
-  background: var(--steel) !important;
+  background: linear-gradient(135deg, #7288AE, #4B5694) !important;
+  border-color: rgba(234,224,207,0.35) !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 4px 16px rgba(74,86,148,0.35) !important;
+  box-shadow: 0 4px 20px rgba(17,24,68,0.5) !important;
 }
 .stTabs [data-baseweb="tab-list"] {
   background: rgba(255,255,255,0.03) !important;
@@ -405,9 +409,6 @@ with st.sidebar:
       <div style="font-size:0.72rem; color:#7288AE; margin-top:4px; letter-spacing:0.08em; text-transform:uppercase">
         Computer Vision Project
       </div>
-      <div style="font-size:0.7rem; color:#4B5694; margin-top:2px">
-        Binus University @Alam Sutera
-      </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -522,8 +523,18 @@ if st.session_state.step == 'setup':
     col1, col2 = st.columns([1, 1], gap="large")
 
     with col1:
-        st.markdown('<div class="section-label">Informasi Sesi</div>', unsafe_allow_html=True)
-        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('''
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.2rem;
+            padding-bottom:12px;border-bottom:1px solid rgba(114,136,174,0.2)">
+            <div style="width:3px;height:22px;background:linear-gradient(180deg,#EAE0CF,#7288AE);
+              border-radius:2px;flex-shrink:0"></div>
+            <div>
+              <div style="font-family:'DM Serif Display',serif;font-size:1.05rem;color:#EAE0CF">Informasi Sesi</div>
+              <div style="font-size:0.68rem;color:#4B5694;letter-spacing:0.1em;text-transform:uppercase;margin-top:1px">Parameter ujian</div>
+            </div>
+          </div>
+        ''', unsafe_allow_html=True)
 
         st.session_state.sesi_nama  = st.text_input("Nama Sesi / Mata Kuliah", value=st.session_state.sesi_nama or "Computer Vision UAS")
         c1, c2 = st.columns(2)
@@ -549,8 +560,18 @@ if st.session_state.step == 'setup':
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
-        st.markdown('<div class="section-label">Kunci Jawaban</div>', unsafe_allow_html=True)
-        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('''
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:1.2rem;
+            padding-bottom:12px;border-bottom:1px solid rgba(114,136,174,0.2)">
+            <div style="width:3px;height:22px;background:linear-gradient(180deg,#EAE0CF,#7288AE);
+              border-radius:2px;flex-shrink:0"></div>
+            <div>
+              <div style="font-family:'DM Serif Display',serif;font-size:1.05rem;color:#EAE0CF">Kunci Jawaban</div>
+              <div style="font-size:0.68rem;color:#4B5694;letter-spacing:0.1em;text-transform:uppercase;margin-top:1px">Format: 1. A, 2. B, ...</div>
+            </div>
+          </div>
+        ''', unsafe_allow_html=True)
 
         key_text = st.text_area(
             "Format: `1. A`, `2. B`, ...",
