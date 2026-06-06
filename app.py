@@ -130,7 +130,7 @@ h1, h2, h3 { font-family: 'DM Serif Display', serif !important; color: var(--cre
   border: 1px solid rgba(74,86,148,0.25);
   border-top: 2px solid rgba(234,224,207,0.3);
   border-radius: 16px;
-  padding: 1.5rem 1.8rem;
+  padding: 1.2rem 1.5rem 0.8rem;
   margin-bottom: 1rem;
 }
 .card-sm {
@@ -402,11 +402,11 @@ if not st.session_state.key_text:
 # ─── SIDEBAR ────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
-    <div style="padding: 8px 0 20px">
-      <div style="font-family:'DM Serif Display',serif; font-size:1.3rem; color:#EAE0CF; line-height:1.2">
+    <div style="padding: 12px 0 16px">
+      <div style="font-family:'DM Serif Display',serif; font-size:1.9rem; color:#EAE0CF; line-height:1.1; letter-spacing:-0.02em">
         LJK Scanner
       </div>
-      <div style="font-size:0.72rem; color:#7288AE; margin-top:4px; letter-spacing:0.08em; text-transform:uppercase">
+      <div style="font-size:0.82rem; color:#7288AE; margin-top:6px; letter-spacing:0.1em; text-transform:uppercase; font-weight:500">
         Computer Vision Project
       </div>
     </div>
@@ -436,8 +436,8 @@ with st.sidebar:
             f'border-radius:8px;margin-bottom:4px;'
             f'background:{"rgba(74,86,148,0.2)" if cls=="active" else "rgba(61,139,110,0.1)" if cls=="done" else "transparent"};'
             f'border:1px solid {"rgba(74,86,148,0.4)" if cls=="active" else "rgba(61,139,110,0.25)" if cls=="done" else "transparent"}">'
-            f'<span style="font-size:0.85rem">{dot}</span>'
-            f'<span style="font-size:0.82rem;color:{"#EAE0CF" if cls in ["active","done"] else "#4B5694"};'
+            f'<span style="font-size:1rem">{dot}</span>'
+            f'<span style="font-size:0.92rem;color:{"#EAE0CF" if cls in ["active","done"] else "#4B5694"};'
             f'font-weight:{"600" if cls=="active" else "400"}">{lbl}</span>'
             f'</div>',
             unsafe_allow_html=True
@@ -490,7 +490,7 @@ with st.sidebar:
             </div>
             """, unsafe_allow_html=True)
     else:
-        st.markdown(f'<div style="color:#4B5694;font-size:0.8rem;padding:8px 0">Belum ada data scan</div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="color:#4B5694;font-size:0.88rem;padding:8px 0;font-style:italic">Belum ada data scan</div>', unsafe_allow_html=True)
 
     st.divider()
     if st.button("↺  Reset Sesi"):
@@ -651,20 +651,54 @@ elif st.session_state.step == 'scan':
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Upload area
-    uploaded_files = st.file_uploader(
-        "Upload foto LJK — JPG atau PNG, bisa lebih dari satu",
-        type=["jpg", "jpeg", "png"],
-        accept_multiple_files=True,
-    )
+    # Upload area — Tab: upload file OR take photo
+    st.markdown("""
+    <div style="margin-bottom:0.6rem">
+      <div style="font-family:'DM Serif Display',serif;font-size:1.05rem;color:#EAE0CF;margin-bottom:4px">
+        Upload atau Foto Langsung
+      </div>
+      <div style="font-size:0.82rem;color:#7288AE">Pilih salah satu cara di bawah untuk memasukkan LJK.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    upload_tab, camera_tab = st.tabs(["📁  Upload File", "📷  Ambil Foto (Webcam)"])
+
+    uploaded_files = []
+    camera_image = None
+
+    with upload_tab:
+        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+        _files = st.file_uploader(
+            "Pilih foto LJK (JPG / PNG) — bisa lebih dari satu",
+            type=["jpg", "jpeg", "png"],
+            accept_multiple_files=True,
+            label_visibility="visible",
+        )
+        if _files:
+            uploaded_files = _files
+
+    with camera_tab:
+        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+        st.markdown(
+            '<div style="font-size:0.8rem;color:#7288AE;margin-bottom:8px">'
+            'Arahkan kamera ke LJK, pastikan semua sudut terlihat jelas.</div>',
+            unsafe_allow_html=True
+        )
+        camera_image = st.camera_input("Ambil foto LJK", label_visibility="collapsed")
+        if camera_image is not None:
+            from PIL import Image as PILImage
+            uploaded_files = [camera_image]  # treat same as uploaded
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
     if uploaded_files:
         for uploaded in uploaded_files:
-            if any(r['filename'] == uploaded.name for r in st.session_state.records):
-                st.warning(f"⚠️ `{uploaded.name}` sudah di-scan, dilewati.")
+            fname = getattr(uploaded, 'name', None) or 'webcam_capture.jpg'
+            if any(r['filename'] == fname for r in st.session_state.records):
+                st.warning(f"⚠️ `{fname}` sudah di-scan, dilewati.")
                 continue
 
-            with st.expander(f"📄  {uploaded.name}", expanded=True):
+            with st.expander(f"📄  {fname}", expanded=True):
                 from PIL import Image
                 img_pil = Image.open(uploaded)
 
@@ -799,7 +833,7 @@ elif st.session_state.step == 'scan':
 
                 # Save
                 record = {
-                    'filename': uploaded.name, 'nama': nama, 'nim': nim,
+                    'filename': fname, 'nama': nama, 'nim': nim,
                     'tanggal': tanggal, 'correct': correct, 'wrong': wrong,
                     'unanswered': unanswered, 'score': score,
                     'total_soal': total_soal,
@@ -808,7 +842,7 @@ elif st.session_state.step == 'scan':
                 }
                 st.session_state.records.append(record)
                 st.session_state.ml_results = None
-                st.success(f"✅  `{uploaded.name}` berhasil disimpan.")
+                st.success(f"✅  `{fname}` berhasil disimpan.")
 
 # ══════════════════════════════════════════════════════════════
 #  STEP 3 — RESULTS
