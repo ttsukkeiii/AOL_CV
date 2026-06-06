@@ -5,7 +5,7 @@ import io
 
 # ─── PAGE CONFIG ────────────────────────────────────────────
 st.set_page_config(
-    page_title="LJK Scanner — SUNIB",
+    page_title="LJK Scanner",
     page_icon="📋",
     layout="wide",
     initial_sidebar_state="expanded",
